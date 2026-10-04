@@ -34,24 +34,23 @@ CREATE TABLE CardCopy (
     PrintingID          NUMBER(10)     NOT NULL,
     CardCondition       VARCHAR2(20)   NOT NULL,
     Description         VARCHAR2(1000) NOT NULL,
-    GradingCompany      VARCHAR2(60),
-    Grade               VARCHAR2(20),
-    CertificationNumber VARCHAR2(80),
     CONSTRAINT cardcopy_pk PRIMARY KEY (CopyID),
     CONSTRAINT cardcopy_printing_fk
         FOREIGN KEY (PrintingID) REFERENCES CardPrinting (PrintingID),
     CONSTRAINT cardcopy_condition_ck
         CHECK (CardCondition IN
             ('NearMint', 'LightlyPlayed', 'ModeratelyPlayed',
-             'HeavilyPlayed', 'Damaged')),
-    CONSTRAINT cardcopy_grading_ck
-        CHECK (
-            (GradingCompany IS NULL AND Grade IS NULL
-             AND CertificationNumber IS NULL)
-            OR
-            (GradingCompany IS NOT NULL AND Grade IS NOT NULL
-             AND CertificationNumber IS NOT NULL)
-        )
+             'HeavilyPlayed', 'Damaged'))
+);
+
+CREATE TABLE GradedCardCopy (
+    CopyID              NUMBER(10)   NOT NULL,
+    GradingCompany      VARCHAR2(60) NOT NULL,
+    Grade               VARCHAR2(20) NOT NULL,
+    CertificationNumber VARCHAR2(80) NOT NULL,
+    CONSTRAINT gradedcardcopy_pk PRIMARY KEY (CopyID),
+    CONSTRAINT gradedcardcopy_copy_fk
+        FOREIGN KEY (CopyID) REFERENCES CardCopy (CopyID)
 );
 
 CREATE TABLE Listing (
@@ -89,9 +88,9 @@ CREATE TABLE SalesOrder (
             ('AwaitingPayment', 'Paid', 'Shipped', 'Delivered', 'Cancelled'))
 );
 
--- 7. Weak entity: LineNo identifies a line only within its owning order.
--- Each line represents one physical copy, so Quantity is not needed.
--- ListingID is not globally UNIQUE: cancelled order lines are retained.
+-- Weak entity
+-- Each line represents one physical copy, so quantity is not needed
+-- ListingID is not globally unique because cancelled order lines are retained
 CREATE TABLE OrderLine (
     OrderID     NUMBER(10)   NOT NULL,
     LineNo      NUMBER(10)   NOT NULL,
@@ -135,4 +134,3 @@ CREATE TABLE Shipment (
     CONSTRAINT shipment_dates_ck
         CHECK (DeliveredAt IS NULL OR DeliveredAt >= ShippedAt)
 );
-
