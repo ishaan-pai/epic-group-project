@@ -1,136 +1,205 @@
-CREATE TABLE Customer (
-    CustomerID  NUMBER(10)    NOT NULL,
-    DisplayName VARCHAR2(100) NOT NULL,
-    Email       VARCHAR2(254) NOT NULL,
-    JoinedAt    DATE          NOT NULL,
-    CONSTRAINT customer_pk PRIMARY KEY (CustomerID),
-    CONSTRAINT customer_email_uq UNIQUE (Email)
+create table customer (
+   customerid  number(10) not null,
+   displayname varchar2(100) not null,
+   email       varchar2(254) not null,
+   joinedat    date not null,
+   constraint customer_pk primary key ( customerid ),
+   constraint customer_email_uq unique ( email )
 );
 
-CREATE TABLE CardSet (
-    SetID       NUMBER(10)    NOT NULL,
-    SetName     VARCHAR2(120) NOT NULL,
-    ReleaseDate DATE          NOT NULL,
-    CONSTRAINT cardset_pk PRIMARY KEY (SetID)
+select *
+  from customer;
+
+create table cardset (
+   setid       number(10) not null,
+   setname     varchar2(120) not null,
+   releasedate date not null,
+   constraint cardset_pk primary key ( setid )
 );
 
-CREATE TABLE CardPrinting (
-    PrintingID     NUMBER(10)    NOT NULL,
-    SetID          NUMBER(10)    NOT NULL,
-    CardName       VARCHAR2(120) NOT NULL,
-    CollectorNumber VARCHAR2(20) NOT NULL,
-    CardLanguage   VARCHAR2(30)  NOT NULL,
-    Variant        VARCHAR2(60)  NOT NULL,
-    Rarity         VARCHAR2(40)  NOT NULL,
-    CONSTRAINT cardprinting_pk PRIMARY KEY (PrintingID),
-    CONSTRAINT cardprinting_set_fk
-        FOREIGN KEY (SetID) REFERENCES CardSet (SetID),
-    CONSTRAINT cardprinting_version_uq
-        UNIQUE (SetID, CollectorNumber, CardLanguage, Variant)
+select setid,
+       'Release Date is: ',
+       releasedate
+  from cardset;
+
+create table cardprinting (
+   printingid      number(10) not null,
+   setid           number(10) not null,
+   cardname        varchar2(120) not null,
+   collectornumber varchar2(20) not null,
+   cardlanguage    varchar2(30) not null,
+   variant         varchar2(60) not null,
+   rarity          varchar2(40) not null,
+   constraint cardprinting_pk primary key ( printingid ),
+   constraint cardprinting_set_fk foreign key ( setid )
+      references cardset ( setid ),
+   constraint cardprinting_version_uq unique ( setid,
+                                               collectornumber,
+                                               cardlanguage,
+                                               variant )
 );
 
-CREATE TABLE CardCopy (
-    CopyID              NUMBER(10)     NOT NULL,
-    PrintingID          NUMBER(10)     NOT NULL,
-    CardCondition       VARCHAR2(20)   NOT NULL,
-    Description         VARCHAR2(1000) NOT NULL,
-    CONSTRAINT cardcopy_pk PRIMARY KEY (CopyID),
-    CONSTRAINT cardcopy_printing_fk
-        FOREIGN KEY (PrintingID) REFERENCES CardPrinting (PrintingID),
-    CONSTRAINT cardcopy_condition_ck
-        CHECK (CardCondition IN
-            ('NearMint', 'LightlyPlayed', 'ModeratelyPlayed',
-             'HeavilyPlayed', 'Damaged'))
+select *
+  from cardprinting
+ where setid = 1
+   and collectornumber = '001'
+   and cardlanguage = 'English'
+   and variant = 'Normal';
+
+create table cardcopy (
+   copyid        number(10) not null,
+   printingid    number(10) not null,
+   cardcondition varchar2(20) not null,
+   description   varchar2(1000) not null,
+   constraint cardcopy_pk primary key ( copyid ),
+   constraint cardcopy_printing_fk foreign key ( printingid )
+      references cardprinting ( printingid ),
+   constraint cardcopy_condition_ck
+      check ( cardcondition in ( 'NearMint',
+                                 'LightlyPlayed',
+                                 'ModeratelyPlayed',
+                                 'HeavilyPlayed',
+                                 'Damaged' ) )
 );
 
-CREATE TABLE GradedCardCopy (
-    CopyID              NUMBER(10)   NOT NULL,
-    GradingCompany      VARCHAR2(60) NOT NULL,
-    Grade               VARCHAR2(20) NOT NULL,
-    CertificationNumber VARCHAR2(80) NOT NULL,
-    CONSTRAINT gradedcardcopy_pk PRIMARY KEY (CopyID),
-    CONSTRAINT gradedcardcopy_copy_fk
-        FOREIGN KEY (CopyID) REFERENCES CardCopy (CopyID)
+select *
+  from cardcopy
+ where printingid = 1
+   and cardcondition = 'NearMint'
+ order by copyid asc;
+
+create table gradedcardcopy (
+   copyid              number(10) not null,
+   gradingcompany      varchar2(60) not null,
+   grade               varchar2(20) not null,
+   certificationnumber varchar2(80) not null,
+   constraint gradedcardcopy_pk primary key ( copyid ),
+   constraint gradedcardcopy_copy_fk foreign key ( copyid )
+      references cardcopy ( copyid )
 );
 
-CREATE TABLE Listing (
-    ListingID     NUMBER(10)    NOT NULL,
-    CopyID        NUMBER(10)    NOT NULL,
-    AskingPrice   NUMBER(10,2)  NOT NULL,
-    ListedAt      DATE          NOT NULL,
-    ListingStatus VARCHAR2(12) DEFAULT 'Active' NOT NULL,
-    CONSTRAINT listing_pk PRIMARY KEY (ListingID),
-    CONSTRAINT listing_copy_fk
-        FOREIGN KEY (CopyID) REFERENCES CardCopy (CopyID),
-    CONSTRAINT listing_price_ck CHECK (AskingPrice > 0),
-    CONSTRAINT listing_status_ck
-        CHECK (ListingStatus IN ('Active', 'Reserved', 'Sold', 'Withdrawn'))
+select distinct copyid as grade
+  from gradedcardcopy
+ where copyid = 1
+ order by grade asc;
+
+create table listing (
+   listingid     number(10) not null,
+   copyid        number(10) not null,
+   askingprice   number(10,2) not null,
+   listedat      date not null,
+   listingstatus varchar2(12) default 'Active' not null,
+   constraint listing_pk primary key ( listingid ),
+   constraint listing_copy_fk foreign key ( copyid )
+      references cardcopy ( copyid ),
+   constraint listing_price_ck check ( askingprice > 0 ),
+   constraint listing_status_ck
+      check ( listingstatus in ( 'Active',
+                                 'Reserved',
+                                 'Sold',
+                                 'Withdrawn' ) )
 );
 
-CREATE TABLE SalesOrder (
-    OrderID       NUMBER(10)     NOT NULL,
-    CustomerID    NUMBER(10)     NOT NULL,
-    PlacedAt      DATE           NOT NULL,
-    OrderStatus   VARCHAR2(20) DEFAULT 'AwaitingPayment' NOT NULL,
-    ShippingFee   NUMBER(10,2)   NOT NULL,
-    RecipientName VARCHAR2(120)  NOT NULL,
-    Street        VARCHAR2(200)  NOT NULL,
-    City          VARCHAR2(100)  NOT NULL,
-    Province      VARCHAR2(100),
-    PostalCode    VARCHAR2(20)   NOT NULL,
-    Country       VARCHAR2(100)  NOT NULL,
-    CONSTRAINT salesorder_pk PRIMARY KEY (OrderID),
-    CONSTRAINT salesorder_customer_fk
-        FOREIGN KEY (CustomerID) REFERENCES Customer (CustomerID),
-    CONSTRAINT salesorder_shipping_ck CHECK (ShippingFee >= 0),
-    CONSTRAINT salesorder_status_ck
-        CHECK (OrderStatus IN
-            ('AwaitingPayment', 'Paid', 'Shipped', 'Delivered', 'Cancelled'))
+select *
+  from listing
+ where ( copyid = 1
+   and listingstatus = 'Active' )
+    or listingstatus = 'Reserved'
+ order by askingprice asc;
+
+create table salesorder (
+   orderid       number(10) not null,
+   customerid    number(10) not null,
+   placedat      date not null,
+   orderstatus   varchar2(20) default 'AwaitingPayment' not null,
+   shippingfee   number(10,2) not null,
+   recipientname varchar2(120) not null,
+   street        varchar2(200) not null,
+   city          varchar2(100) not null,
+   province      varchar2(100),
+   postalcode    varchar2(20) not null,
+   country       varchar2(100) not null,
+   constraint salesorder_pk primary key ( orderid ),
+   constraint salesorder_customer_fk foreign key ( customerid )
+      references customer ( customerid ),
+   constraint salesorder_shipping_ck check ( shippingfee >= 0 ),
+   constraint salesorder_status_ck
+      check ( orderstatus in ( 'AwaitingPayment',
+                               'Paid',
+                               'Shipped',
+                               'Delivered',
+                               'Cancelled' ) )
 );
+
+select *
+  from salesorder
+ where customerid <> 1
+   and orderstatus in ( 'Paid',
+                        'Shipped',
+                        'Delivered' )
+ order by placedat desc;
 
 -- Weak entity
 -- Each line represents one physical copy, so quantity is not needed
 -- ListingID is not globally unique because cancelled order lines are retained
-CREATE TABLE OrderLine (
-    OrderID     NUMBER(10)   NOT NULL,
-    LineNo      NUMBER(10)   NOT NULL,
-    ListingID   NUMBER(10)   NOT NULL,
-    AgreedPrice NUMBER(10,2) NOT NULL,
-    CONSTRAINT orderline_pk PRIMARY KEY (OrderID, LineNo),
-    CONSTRAINT orderline_order_fk
-        FOREIGN KEY (OrderID) REFERENCES SalesOrder (OrderID),
-    CONSTRAINT orderline_listing_fk
-        FOREIGN KEY (ListingID) REFERENCES Listing (ListingID),
-    CONSTRAINT orderline_listing_uq UNIQUE (OrderID, ListingID),
-    CONSTRAINT orderline_number_ck CHECK (LineNo > 0),
-    CONSTRAINT orderline_price_ck CHECK (AgreedPrice > 0)
+create table orderline (
+   orderid     number(10) not null,
+   lineno      number(10) not null,
+   listingid   number(10) not null,
+   agreedprice number(10,2) not null,
+   constraint orderline_pk primary key ( orderid,
+                                         lineno ),
+   constraint orderline_order_fk foreign key ( orderid )
+      references salesorder ( orderid ),
+   constraint orderline_listing_fk foreign key ( listingid )
+      references listing ( listingid ),
+   constraint orderline_listing_uq unique ( orderid,
+                                            listingid ),
+   constraint orderline_number_ck check ( lineno > 0 ),
+   constraint orderline_price_ck check ( agreedprice > 0 )
 );
 
-CREATE TABLE Payment (
-    PaymentID        NUMBER(10)    NOT NULL,
-    OrderID          NUMBER(10)    NOT NULL,
-    PaidAt           DATE          NOT NULL,
-    Amount           NUMBER(10,2)  NOT NULL,
-    Method           VARCHAR2(30)  NOT NULL,
-    PaymentReference VARCHAR2(100) NOT NULL,
-    CONSTRAINT payment_pk PRIMARY KEY (PaymentID),
-    CONSTRAINT payment_order_fk
-        FOREIGN KEY (OrderID) REFERENCES SalesOrder (OrderID),
-    CONSTRAINT payment_order_uq UNIQUE (OrderID),
-    CONSTRAINT payment_amount_ck CHECK (Amount > 0)
+select *
+  from orderline
+ where orderid = 1
+ order by lineno asc;
+
+create table payment (
+   paymentid        number(10) not null,
+   orderid          number(10) not null,
+   paidat           date not null,
+   amount           number(10,2) not null,
+   method           varchar2(30) not null,
+   paymentreference varchar2(100) not null,
+   constraint payment_pk primary key ( paymentid ),
+   constraint payment_order_fk foreign key ( orderid )
+      references salesorder ( orderid ),
+   constraint payment_order_uq unique ( orderid ),
+   constraint payment_amount_ck check ( amount > 0 )
 );
 
-CREATE TABLE Shipment (
-    ShipmentID     NUMBER(10)    NOT NULL,
-    OrderID        NUMBER(10)    NOT NULL,
-    Carrier        VARCHAR2(60)  NOT NULL,
-    TrackingNumber VARCHAR2(100) NOT NULL,
-    ShippedAt      DATE          NOT NULL,
-    DeliveredAt    DATE,
-    CONSTRAINT shipment_pk PRIMARY KEY (ShipmentID),
-    CONSTRAINT shipment_order_fk
-        FOREIGN KEY (OrderID) REFERENCES SalesOrder (OrderID),
-    CONSTRAINT shipment_order_uq UNIQUE (OrderID),
-    CONSTRAINT shipment_dates_ck
-        CHECK (DeliveredAt IS NULL OR DeliveredAt >= ShippedAt)
+select *
+  from payment
+ where orderid = 1
+ order by paidat asc;
+
+create table shipment (
+   shipmentid     number(10) not null,
+   orderid        number(10) not null,
+   carrier        varchar2(60) not null,
+   trackingnumber varchar2(100) not null,
+   shippedat      date not null,
+   deliveredat    date,
+   constraint shipment_pk primary key ( shipmentid ),
+   constraint shipment_order_fk foreign key ( orderid )
+      references salesorder ( orderid ),
+   constraint shipment_order_uq unique ( orderid ),
+   constraint shipment_dates_ck
+      check ( deliveredat is null
+          or deliveredat >= shippedat )
 );
+
+select *
+  from shipment
+ where orderid = 1
+ order by shippedat asc;
