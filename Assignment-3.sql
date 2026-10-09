@@ -7,20 +7,12 @@ create table customer (
    constraint customer_email_uq unique ( email )
 );
 
-select *
-  from customer;
-
 create table cardset (
    setid       number(10) not null,
    setname     varchar2(120) not null,
    releasedate date not null,
    constraint cardset_pk primary key ( setid )
 );
-
-select setid,
-       'Release Date is: ',
-       releasedate
-  from cardset;
 
 create table cardprinting (
    printingid      number(10) not null,
@@ -39,13 +31,6 @@ create table cardprinting (
                                                variant )
 );
 
-select *
-  from cardprinting
- where setid = 1
-   and collectornumber = '001'
-   and cardlanguage = 'English'
-   and variant = 'Normal';
-
 create table cardcopy (
    copyid        number(10) not null,
    printingid    number(10) not null,
@@ -62,12 +47,6 @@ create table cardcopy (
                                  'Damaged' ) )
 );
 
-select *
-  from cardcopy
- where printingid = 1
-   and cardcondition = 'NearMint'
- order by copyid asc;
-
 create table gradedcardcopy (
    copyid              number(10) not null,
    gradingcompany      varchar2(60) not null,
@@ -77,11 +56,6 @@ create table gradedcardcopy (
    constraint gradedcardcopy_copy_fk foreign key ( copyid )
       references cardcopy ( copyid )
 );
-
-select distinct copyid as grade
-  from gradedcardcopy
- where copyid = 1
- order by grade asc;
 
 create table listing (
    listingid     number(10) not null,
@@ -99,13 +73,6 @@ create table listing (
                                  'Sold',
                                  'Withdrawn' ) )
 );
-
-select *
-  from listing
- where ( copyid = 1
-   and listingstatus = 'Active' )
-    or listingstatus = 'Reserved'
- order by askingprice asc;
 
 create table salesorder (
    orderid       number(10) not null,
@@ -131,14 +98,6 @@ create table salesorder (
                                'Cancelled' ) )
 );
 
-select *
-  from salesorder
- where customerid <> 1
-   and orderstatus in ( 'Paid',
-                        'Shipped',
-                        'Delivered' )
- order by placedat desc;
-
 -- Weak entity
 -- Each line represents one physical copy, so quantity is not needed
 -- ListingID is not globally unique because cancelled order lines are retained
@@ -159,11 +118,6 @@ create table orderline (
    constraint orderline_price_ck check ( agreedprice > 0 )
 );
 
-select *
-  from orderline
- where orderid = 1
- order by lineno asc;
-
 create table payment (
    paymentid        number(10) not null,
    orderid          number(10) not null,
@@ -177,11 +131,6 @@ create table payment (
    constraint payment_order_uq unique ( orderid ),
    constraint payment_amount_ck check ( amount > 0 )
 );
-
-select *
-  from payment
- where orderid = 1
- order by paidat asc;
 
 create table shipment (
    shipmentid     number(10) not null,
@@ -198,8 +147,3 @@ create table shipment (
       check ( deliveredat is null
           or deliveredat >= shippedat )
 );
-
-select *
-  from shipment
- where orderid = 1
- order by shippedat asc;
