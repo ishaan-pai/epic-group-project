@@ -1035,3 +1035,138 @@ drop view potential_customer;
 
 select *
   from potential_customer;
+
+-- *****************************************************************************
+-- * Assignment-5-Advanced-Queries.sql                                         *
+-- *****************************************************************************
+-- A5 Query 1: Find customers who bought graded cards in paid, shipped or delivered orders
+select c.customerid,
+       c.displayname,
+       c.email
+  from customer c
+ where exists (
+   select ol.orderid
+     from salesorder o,
+          orderline ol,
+          listing l,
+          gradedcardcopy g,
+          payment p
+    where o.customerid = c.customerid
+      and o.orderid = ol.orderid
+      and ol.listingid = l.listingid
+      and l.copyid = g.copyid
+      and o.orderid = p.orderid
+      and o.orderstatus in ( 'Paid',
+                             'Shipped',
+                             'Delivered' )
+)
+ order by c.displayname asc,
+          c.customerid asc;
+
+-- A5 Query 2: Combine payment and delivery follow up contacts, showing each customer once
+select c.customerid,
+       c.displayname,
+       c.email
+  from customer c,
+       salesorder o
+ where c.customerid = o.customerid
+   and o.orderstatus = 'AwaitingPayment'
+union
+select c.customerid,
+       c.displayname,
+       c.email
+  from customer c,
+       salesorder o,
+       shipment s
+ where c.customerid = o.customerid
+   and o.orderid = s.orderid
+   and o.orderstatus = 'Shipped'
+   and s.deliveredat is null
+ order by displayname asc,
+          customerid asc;
+
+-- A5 Query 3: Find orders with a recorded payment but no shipment record
+select o.orderid,
+       c.displayname,
+       o.orderstatus,
+       o.placedat
+  from customer c,
+       salesorder o,
+       payment p
+ where c.customerid = o.customerid
+   and o.orderid = p.orderid
+minus
+select o.orderid,
+       c.displayname,
+       o.orderstatus,
+       o.placedat
+  from customer c,
+       salesorder o,
+       shipment s
+ where c.customerid = o.customerid
+   and o.orderid = s.orderid
+ order by orderid asc;
+
+-- A5 Query 4: Find non cancelled orders containing at least two physical cards
+select o.orderid,
+       c.displayname,
+       o.orderstatus,
+       count(ol.lineno) as cardcount,
+       sum(ol.agreedprice) as subtotal_cad
+  from customer c,
+       salesorder o,
+       orderline ol
+ where c.customerid = o.customerid
+   and o.orderid = ol.orderid
+   and o.orderstatus <> 'Cancelled'
+ group by o.orderid,
+          c.displayname,
+          o.orderstatus
+having count(ol.lineno) >= 2
+ order by o.orderid asc;
+
+-- A5 Query 5: Summarize paid card sales by set using agreed prices, excluding shipping
+select cs.setid,
+       cs.setname,
+       count(ol.lineno) as cardssold,
+       sum(ol.agreedprice) as total_sales_cad,
+       avg(ol.agreedprice) as average_price_cad
+  from cardset cs,
+       cardprinting cp,
+       cardcopy cc,
+       listing l,
+       orderline ol,
+       salesorder o,
+       payment p
+ where cs.setid = cp.setid
+   and cp.printingid = cc.printingid
+   and cc.copyid = l.copyid
+   and l.listingid = ol.listingid
+   and ol.orderid = o.orderid
+   and o.orderid = p.orderid
+   and o.orderstatus in ( 'Paid',
+                          'Shipped',
+                          'Delivered' )
+ group by cs.setid,
+          cs.setname
+ order by cs.setid asc;
+
+-- *****************************************************************************
+-- * Assignment-5-Drop-Objects.sql                                             *
+-- *****************************************************************************
+-- Drop the project's views first, then child tables before their parent tables
+-- Run only when removing an existing complete project schema
+drop view paidorderreceipts;
+drop view customerorderitems;
+drop view activecardcatalogue;
+
+drop table shipment;
+drop table payment;
+drop table orderline;
+drop table salesorder;
+drop table listing;
+drop table gradedcardcopy;
+drop table cardcopy;
+drop table cardprinting;
+drop table cardset;
+drop table customer;
